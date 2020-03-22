@@ -25,6 +25,7 @@ class Fuzzy
 		double min_y[max_n][max_n];//Minimum value of each possible pair of error and d_error
 		double range[max_n][3];//Array of extreme and centre points of sets
 		int fuzzy[max_n][max_n];//Fuzzy Logic
+		double sigma_t;
 		double error;//error
 		double d_error;//d_error
 		double numerator;//Summation of cooresponding fuzzy*minimum_y
@@ -47,17 +48,146 @@ class Fuzzy
 					fuzzy[i][j]=fuzzy[i][j-1]-1;									//**
 					k++;															//**
 				}
-			for(int i=0;i<sets;i++)								//*These lines copies the upper triangular the the left out lower portion
+			for(int i=0;i<sets;i++)								//*These lines copy the upper triangular the the left out lower portion
 				for(int j=0;j<i;j++)							//
 					fuzzy[i][j]=fuzzy[j][i];					//
-			fuzzy[1][1]=sets-1;				//This line modifies the (2,2) element in the fuzzy set. This line is separate because of its inconsistency to the symmetricity of the logic which could not be incorporated in the oiginal logic above
+			fuzzy[1][1]=sets-1;				//This line modifies the (2,2) element in the fuzzy set. This line is separate because of its inconsistency to the symmetricity of the logic which could not be incorporated in the original logic above
 			fuzzy[sets-2][sets-2]=0;		//Same as the above but modifies the (sets-1,sets-1) i.e. the second from last element on the main diagonal
-			numerator=0.0;					//Initialising numerator (in correction)
-			sum=0.0;						//Initialising sum (denominator in correction)
+		}
+		void append_set(double a, double b, double c)//Nothing to explain here, just a very big function to add sets to the object (TRIANGULAR STYLE) //(LEFT_END, CENTRE, RIGHT_END)
+		{
+			if(c<b||a>b)//corrects the order of input
+			{
+				double temp;
+				if(a>b)
+				{
+					temp=b;
+					b=a;
+					a=temp;
+				}
+				if(b>c)
+				{
+					temp=c;
+					c=b;
+					b=temp;
+				}
+				if(a>b)
+				{
+					temp=b;
+					b=a;
+					a=temp;
+				}
+			}
+			if(sets==0)
+			{
+				range[0][0]=a;
+				range[0][1]=b;
+				range[0][2]=c;
+				sigma[0]=sigma_t;
+				sets++;
+			}
+			else
+			{
+				if(sets<max_n)
+				{
+					int i=sets-1;
+					while(i>=0)
+					{
+						if(b==range[i][1])
+						{
+							Serial.println("!! No two sets can have the same centre !!");
+							sets--;
+							break;
+						}
+						if(b<range[i][1])					//finding the position for the new set
+						{
+							i--;
+							if(i>-1)
+								continue;
+						}
+						i++;
+						for(int j=sets;j>i;j--)				//
+						{									//
+							range[j][0]=range[j-1][0];		//
+							range[j][1]=range[j-1][1];		//Shifts the other sets to make space for the new set
+							range[j][2]=range[j-1][2];		//
+							sigma[j]=sigma[j-1];			//
+						}									//
+						range[i][0]=a;
+						range[i][1]=b;
+						range[i][2]=c;
+						sigma[i]=sigma_t;
+						break;
+					}
+					sets++;
+				}
+				else
+				{
+					Serial.print("!! Maximum sets limit reached -No more sets can be added !! max_n = ");
+					Serial.println(max_n);
+				}
+			}
+		}
+		void append_set(double a, double b)//Nothing to explain here, just a very big function to add sets to the object (GAUSSIAN STYLE) //(CENTRE, SIGMA)
+		{
+			if(b<=0)//Checks if sigma is less than zero
+			{
+				Serial.println("!! Invalid Sigma (<=0) !! - Changing Sigma to 10");//if so gives a default value so as to continue the operation with a optimum value applicable in most situations
+				b=10.0;
+			}
+			if(sets==0)
+			{
+				range[0][0]=a-b;
+				range[0][1]=a;
+				range[0][2]=a+b;
+				sigma[0]=b;
+				sets++;
+			}
+			else
+			{
+				if(sets<max_n)
+				{
+					int i=sets-1;
+					while(i>=0)
+					{
+						if(a==range[i][1])
+						{
+							Serial.println("!! No two sets can have the same centre !!");
+							sets--;
+							break;
+						}
+						if(a<range[i][1])					//finding the position for the new set
+						{
+							i--;
+							if(i!=-1)
+								continue;
+						}
+						i++;
+						for(int j=sets;j>i;j--)				//
+						{									//
+							range[j][0]=range[j-1][0];		//
+							range[j][1]=range[j-1][1];		//Shifts the other sets to make space for the new set
+							range[j][2]=range[j-1][2];		//
+							sigma[j]=sigma[j-1];			//
+						}									//
+						range[i][0]=a-b;
+						range[i][1]=a;
+						range[i][2]=a+b;
+						sigma[i]=b;
+						break;
+					}
+					sets++;
+				}
+				else
+				{
+					Serial.print("!! Maximum sets limit reached -No more sets can be added !! max_n = ");
+					Serial.println(max_n);
+				}
+			}
 		}
 		//constructor
 		//CONSTRUCTOR NUMBER ONE - for symmetric sets (both Tringular and Gaussian)
-		Fuzzy(double s,double m=2.0,int n=5,double c=0.0) //for triangular functions, set multiplier between 1.0 and 3.0 for best results
+		Fuzzy(double s,int n,double m=2.0,double c=0.0) //for triangular functions, set multiplier between 1.0 and 3.0 for best results
 		{
 			if(s<=0.0)//Checks if sigma is less than zero
 			{
@@ -71,16 +201,20 @@ class Fuzzy
 			}
 			if(n<=0)//Checks if the number of given sets are less than zero
 			{
-				Serial.print("!! Invalid Number of Sets(<0) !!");
+				Serial.print("!! Invalid Number of Sets(<0) !! - Changing Number of Sets to ");
+				Serial.print(max_n);
+				n=max_n;//if so sets the number_of_sets to maximum number of sets defined at the top for most accurate correction possible (but may increase compilation time)
 			}
 			if(n>max_n)//Since arrays are defined upto a maximum limit, exceeding that limit will create problems
 			{
-				Serial.print("!! Invalid Number of Sets(>max_n) !! max_n = ");
+				Serial.print("!! Invalid Number of Sets(>max_n) !! - Changing Number of Sets to ");
 				Serial.println(max_n);
+				n=max_n;//if so sets the number_of_sets to maximum number of sets defined at the top for most accurate correction possible (but may increase compilation time)
 			}
 			sets=n;
 			multiplier=m/2;
 			centre=c;
+			sigma_t=s;
 			//defining the membership functions
 			for(int i=0;i<sets;i++)
 			{
@@ -91,73 +225,22 @@ class Fuzzy
 				range[i][0]=range[i][1]-sigma[i];//sets the value of ends of a set
 				range[i][2]=range[i][1]+sigma[i];//same as above
 			}
+			numerator=0.0;					//Initialising numerator (in correction)
+			sum=0.0;						//Initialising sum (denominator in correction)
+
 		}
 		//CONSTRUCTOR NUMBER 2 - for discreet/unsymmetric triangular sets + symmetric gaussian sets
-		Fuzzy(double **a,int n,double s)//a is a nX3 matrix with the columns containing (the_left_end_value, the_centre_value, the_right_end_value)
+		Fuzzy(double s=10.0)
 		{
 			if(s<=0.0)//Checks if sigma is less than zero
 			{
 				Serial.println("!! Invalid Sigma (<=0) !! - Changing Sigma to 10");
 				s=10.0;//if so gives a default value so as to continue the operation with a optimum value applicable in most situations
 			}
-			if(n<=0)//Checks if the number of given sets are less than zero
-			{
-				Serial.print("!! Invalid Number of Sets(<0) !!");
-			}
-			if(n>max_n)//Since arrays are defined upto a maximum limit, exceeding that limit will create problems
-			{
-				Serial.print("!! Invalid Number of Sets(>max_n) !! max_n = ");
-				Serial.println(max_n);
-			}
-			sets=n;
-			for(int i=0;i<sets;i++)
-			{
-				if(i!=0)
-					if(a[i][1]<a[i-1][1])//checks if the sets are given in ascending order or not - It is required because the library assumes that the user will do so mainly to save precious compilation time
-					{
-						Serial.println("!! Invalid Order of Sets - Input The Sets In Ascending Order!!");//if you want you can set a operation in case this problem is detected
-																										 //perhaps a exception handling statement or a sorting loop
-					}
-				sigma[i]=s;//sigma is constant			
-				range[i][0]=a[i][0];//copies value from input set
-				range[i][1]=a[i][1];//"""""""
-				range[i][2]=a[i][2];//"""""""
-			}
-		}
-		//CONSTRUCTOR NUMBER 3 - for discreet/unsymmetric gaussian sets
-		Fuzzy(double** a,int n)//a is a nX2 matrix with the first column containing the centre of sets and the second one containing the corresponding standard-deviation(sigma) 
-		{
-			if(n<=0)//Checks if the number of given sets are less than zero
-			{
-				Serial.print("!! Invalid Number of Sets(<0) !! - Changing Number of Sets to ");
-				Serial.println(max_n);
-				n=max_n;//if so sets the sets to maximum number of sets defined at the top for most accurate correction possible (but may increase compilation time)
-			}
-			if(n>max_n)//Since arrarys are defines upto a maximum limit, exceeding that limit create problems
-			{
-				Serial.print("!! Invalid Number of Sets(>max_n) !! - Changing Number of Sets to ");
-				Serial.println(max_n);
-				n=max_n;//if so sets the sets to maximum number of sets defines at the top for most accurate correction possible (but may increase compilation time)
-			}
-			sets=n;
-			for(int i=0;i<sets;i++)
-			{
-				if(a[i][1]<=0)//Checks if sigma is less than zero
-				{
-					Serial.println("!! Invalid Sigma (<=0) !! - Changing Sigma to 10");//if so gives a default value so as to continue the operation with a optimum value applicable in most situations
-					a[i][1]=10.0;
-				}
-				if(i!=0)
-					if(a[i][0]<a[i-1][0]&&i!=0)//checks if the sets are given in ascending order or not - It is required because the library assumes that the user will do so mainly to save precious compilation time
-					{
-						Serial.println("!! Invalid Order of Sets - Input The Sets In Ascending Order!!");
-						//--------------add something here----------------
-					}
-				sigma[i]=a[i][1];			//sigma for set
-				range[i][1]=a[i][0];		//sets the centre value
-				range[i][0]=a[i][0]-a[i][1];//sets the left_end_value
-				range[i][2]=a[i][0]+a[i][1];//sets the right_end_value
-			}
+			sigma_t=s;
+			sets=0;
+			numerator=0.0;					//Initialising numerator (in correction)
+			sum=0.0;						//Initialising sum (denominator in correction)
 		}
 		//gives the value of weight of measurement GAUSSIAN
 		double give_y_gaussian(double e,int i)
@@ -173,6 +256,14 @@ class Fuzzy
 			else if(e>(range[i][0])&&e<range[i][1])//second half of a set
 				return (e-range[i][0])/(range[i][1]-range[i][0]);
 			else return 0.0;
+		}
+		double give_centroid_triangular(int p)//gives the centroid of the triangle thus formed(the abscissa)
+		{
+			return ((range[p][0]+range[p][2]+range[p][1])/3);
+		}
+		double give_centroid_gaussian(int p)//gives the centroid value of the gassian set formed
+		{
+			return range[p][1];
 		}
 		// defines arrays of the weights of error, change_error, mininmum of all combinations of all errors and change_errors GAUSSIAN
 		void define_error_array_gaussian()
@@ -208,7 +299,7 @@ class Fuzzy
 			for(int i=0;i<sets;i++)
 				for(int j=0;j<sets;j++)
 				{
-					numerator+=min_y[i][j]*range[fuzzy[i][j]][1];//calculation of numerator
+					numerator+=min_y[i][j]*give_centroid_gaussian(fuzzy[i][j]);//calculation of numerator
 					sum+=min_y[i][j];//calculation of sum
 				}
 			return numerator/sum;// and finally the CORRECTION!!
@@ -219,7 +310,7 @@ class Fuzzy
 			if(e>=range[sets-1][2]||e<=range[0][0])//checks if the error overshoots the defined range
 			{
 				Serial.println("!! Error Out Of Bounds For Triangular Functions !!");//same can be done for gaussian functions but they will not cause large problems as they never give weight as zero 
-				//in that case something can be added here so as to redefine sets to prevent any error in the final correction
+				//in that case something can be added here so as to redefine of sets to prevent any error in the final correction
 				return 0;
 			}
 			if(de>=range[sets-1][2]||de<=range[0][0])//same as above but for change_in_error
@@ -235,7 +326,7 @@ class Fuzzy
 			for(int i=0;i<sets;i++)
 				for(int j=0;j<sets;j++)
 				{
-					numerator+=min_y[i][j]*range[fuzzy[i][j]][1];//calculation of numerator
+					numerator+=min_y[i][j]*give_centroid_triangular(fuzzy[i][j]);//calculation of numerator
 					sum+=min_y[i][j];//calculation of sum(of minimum of weights)
 				}
 			return numerator/sum;// and finally the CORRECTION!!
