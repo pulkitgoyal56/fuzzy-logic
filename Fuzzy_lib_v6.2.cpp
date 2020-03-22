@@ -50,7 +50,7 @@ class Fuzzy
 		}
 		//constructor
 		//CONSTRUCTOR NUMBER ONE - for symmetric sets (both Tringular and Gaussian)
-		Fuzzy(double s,int n=5,double m=2.0,double c=0.0) //for triangular functions, set multiplier between 1.0 and 3.0 for best results
+		Fuzzy(double s,double m=2.0,int n=5,double c=0.0) //for triangular functions, set multiplier between 1.0 and 3.0 for best results
 		{
 			if(s<=0.0)//Checks if sigma is less than zero
 			{
@@ -87,7 +87,7 @@ class Fuzzy
 			}
 		}
 		//CONSTRUCTOR NUMBER 2 - for discreet/unsymmetric triangular sets + symmetric gaussian sets
-		Fuzzy(double **a,int n,double s=10.0)//a is a nX3 matrix with the columns containing (the_left_end_value, the_centre_value, the_right_end_value)
+		Fuzzy(double **a,int n,double s)//a is a nX3 matrix with the columns containing (the_left_end_value, the_centre_value, the_right_end_value)
 		{
 			if(s<=0.0)//Checks if sigma is less than zero
 			{
@@ -163,6 +163,14 @@ class Fuzzy
 				return (e-range[i][0])/(range[i][1]-range[i][0]);
 			else return 0.0;
 		}
+		double give_centroid_triangular(int p)
+		{
+			return ((range[p][0]+range[p][2]+range[p][1])/3);
+		}
+		double give_centroid_gaussian(int p)
+		{
+			return range[p][1];
+		}
 		// defines arrays of the weights of error, change_error, mininmum of all combinations of all errors and change_errors GAUSSIAN
 		void define_error_array_gaussian()
 		{
@@ -197,7 +205,7 @@ class Fuzzy
 			for(int i=0;i<sets;i++)
 				for(int j=0;j<sets;j++)
 				{
-					numerator+=min_y[i][j]*range[fuzzy[i][j]][1];//calculation of numerator
+					numerator+=min_y[i][j]*give_centroid_gaussian(fuzzy[i][j]);//calculation of numerator
 					sum+=min_y[i][j];//calculation of sum
 				}
 			return numerator/sum;// and finally the CORRECTION!!
@@ -224,7 +232,7 @@ class Fuzzy
 			for(int i=0;i<sets;i++)
 				for(int j=0;j<sets;j++)
 				{
-					numerator+=min_y[i][j]*range[fuzzy[i][j]][1];//calculation of numerator
+					numerator+=min_y[i][j]*give_centroid_triangular(fuzzy[i][j]);//calculation of numerator
 					sum+=min_y[i][j];//calculation of sum(of minimum of weights)
 				}
 			return numerator/sum;// and finally the CORRECTION!!
@@ -233,39 +241,39 @@ class Fuzzy
 int main()
 {
 	double p,q;
-	p=20;
-	q=20;
+	p=40;
+	q=40;
 	Fuzzy mag(20.0);//(SIGMA,MULTIPLIER,SETS,CENTRE)
 	cout<<"Error_triangular = "<<mag.correction_triangular(p,q)<<endl;
 	cout<<"Error_gaussian = "<<mag.correction_gaussian(p,q)<<endl;
-//	double **a;
-//	a=new double*[5];
-//	for(int i=0;i<5;i++)
-//		a[i]=new double[3];
-//	a[0][0]=-60.0;
-//	a[0][1]=-40.0;
-//	a[0][2]=-20.0;
-//	for(int i=1;i<5;i++)
-//	{	
-//		a[i][0]=a[i-1][0]+20;
-//		a[i][1]=a[i-1][1]+20;
-//		a[i][2]=a[i-1][2]+20;
-//	}
-//	Fuzzy mag2(a,5,20.0);//(SETS**,NSETS,SIGMA)
-//	cout<<"Error_triangular = "<<mag2.correction_triangular(p,q)<<endl;
-//	cout<<"Error_gaussian = "<<mag2.correction_gaussian(p,q)<<endl;
-//	double **b;
-//	b=new double*[5];
-//	for(int i=0;i<5;i++)
-//		b[i]=new double[3];
-//	b[0][0]=-40;
-//	b[0][1]=20;
-//	for(int i=1;i<5;i++)
-//	{
-//		b[i][0]=b[i-1][0]+20;
-//		b[i][1]=20;
-//	}
-//	Fuzzy mag3(b,5);//(SETS**,NSETS)
-//	cout<<"Error_triangular = "<<mag3.correction_triangular(p,q)<<endl;
-//	cout<<"Error_gaussian = "<<mag3.correction_gaussian(p,q);
+	double **a;
+	a=new double*[5];
+	for(int i=0;i<5;i++)
+		a[i]=new double[3];
+	a[0][0]=-60.0;
+	a[0][1]=-40.0;
+	a[0][2]=-20.0;
+	for(int i=1;i<5;i++)
+	{	
+		a[i][0]=a[i-1][0]+20;
+		a[i][1]=a[i-1][1]+20;
+		a[i][2]=a[i-1][2]+20;
+	}
+	Fuzzy mag2(a,5,20.0);//(SETS**,NSETS,SIGMA)
+	cout<<"Error_triangular = "<<mag2.correction_triangular(p,q)<<endl;
+	cout<<"Error_gaussian = "<<mag2.correction_gaussian(p,q)<<endl;
+	double **b;
+	b=new double*[5];
+	for(int i=0;i<5;i++)
+		b[i]=new double[3];
+	b[0][0]=-40;
+	b[0][1]=20;
+	for(int i=1;i<5;i++)
+	{
+		b[i][0]=b[i-1][0]+20;
+		b[i][1]=20;
+	}
+	Fuzzy mag3(b,5);//(SETS**,NSETS)
+	cout<<"Error_triangular = "<<mag3.correction_triangular(p,q)<<endl;
+	cout<<"Error_gaussian = "<<mag3.correction_gaussian(p,q);
 }
