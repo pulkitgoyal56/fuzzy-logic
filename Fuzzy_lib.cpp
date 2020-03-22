@@ -1,39 +1,60 @@
-#include<iostream>
 #include<cmath>
 #define exp 2.7132
 using namespace std;
 class Fuzzy
 {
 	public:
-		double multiplier,sigma,r0,r1,r2,r3,r4;
+		double multiplier,sigma;
 		double error_y[5],d_error_y[5],min_y[5][5],fuzzy[25],range[5];
-		double sum;
-		Fuzzy(double s,double m)
-		{
-			sigma=s;
-			multiplier=m/2;
-			r0=-2*multiplier*sigma;
-			r1=-1*multiplier*sigma;
-			r2=0.0;
-			r3=multiplier*sigma;
-			r4=2*multiplier*sigma;
-			sum=0.0;
-			range[0]=r0;
-			range[1]=r1;
-			range[2]=r2;
-			range[3]=r3;
-			range[4]=r4;
-		}
 		double error,d_error;
+		Fuzzy(double s,double m=2.0)
+		{
+			//sigma - deviation (width of membership function)
+			sigma=s;
+			//multiplier - sets the distance between the point of intersection of the two adjacent membership functions on either side of a function (sets the distance between centres of two adjacent membership functions) BY DEFAULT 2
+			multiplier=m/2;
+			//defining the membership functions
+			range[0]=-2*multiplier*sigma;
+			range[1]=-1*multiplier*sigma;
+			range[2]=0.0;
+			range[3]=multiplier*sigma;
+			range[4]=2*multiplier*sigma;
+			//heart of fuzzy logic
+			fuzzy[0]=range[4];
+			fuzzy[1]=range[4];
+			fuzzy[2]=range[4];
+			fuzzy[3]=range[3];
+			fuzzy[4]=range[3];
+			fuzzy[5]=range[4];
+			fuzzy[6]=range[4];
+			fuzzy[7]=range[3];
+			fuzzy[8]=range[2];
+			fuzzy[9]=range[2];
+			fuzzy[10]=range[3];
+			fuzzy[11]=range[3];
+			fuzzy[12]=range[2];
+			fuzzy[13]=range[1];
+			fuzzy[14]=range[1];
+			fuzzy[15]=range[2];
+			fuzzy[16]=range[2];
+			fuzzy[17]=range[1];
+			fuzzy[18]=range[0];
+			fuzzy[19]=range[0];
+			fuzzy[20]=range[1];
+			fuzzy[21]=range[1];
+			fuzzy[22]=range[0];
+			fuzzy[23]=range[0];
+			fuzzy[24]=range[0];		
+		}
+		//destructor
+		~Fuzzy(){}
+		//gives the value of weight of measurement
 		double give_y(double e,double s)
 		{
 			double u=-(((e-s)*(e-s))/(sigma*sigma*2));
 			return pow(exp,u); 
 		}
-		double compare(double ye,double yde)
-		{
-			return (ye<yde?ye:yde);
-		}
+		// defines arrays of the weights of error, change_error, mininmum of all combinations of all errors and change_errors
 		void define_error_array()
 		{
 			for(int i=0;i<5;i++)
@@ -41,70 +62,18 @@ class Fuzzy
 				error_y[i]=give_y(error,range[i]);
 				d_error_y[i]=give_y(d_error,range[i]);
 			}
-			for(int i=1;i<6;i++)
-				for(int j=1;j<6;j++)
-					min_y[i][j]=compare(error_y[i],d_error_y[j]);
+			for(int i=0;i<5;i++)
+				for(int j=0;j<5;j++)
+					min_y[i][j]=(error_y[i]<d_error_y[j]?error_y[i]:d_error_y[j]);
 		}
-		void assign_fuzzyset()
-		{
-			int i=0;
-			fuzzy[i]=r4;
-			i++;
-			fuzzy[i]=r4;
-			i++;
-			fuzzy[i]=r4;
-			i++;
-			fuzzy[i]=r3;
-			i++;
-			fuzzy[i]=r2;
-			i++;
-			fuzzy[i]=r4;
-			i++;
-			fuzzy[i]=r4;
-			i++;
-			fuzzy[i]=r3;
-			i++;
-			fuzzy[i]=r2;
-			i++;
-			fuzzy[i]=r1;
-			i++;
-			fuzzy[i]=r3;
-			i++;
-			fuzzy[i]=r3;
-			i++;
-			fuzzy[i]=r2;
-			i++;
-			fuzzy[i]=r1;
-			i++;
-			fuzzy[i]=r1;
-			i++;
-			fuzzy[i]=r1;
-			i++;
-			fuzzy[i]=r2;
-			i++;
-			fuzzy[i]=r1;
-			i++;
-			fuzzy[i]=r0;
-			i++;
-			fuzzy[i]=r0;
-			i++;
-			fuzzy[i]=r1;
-			i++;
-			fuzzy[i]=r1;
-			i++;
-			fuzzy[i]=r0;
-			i++;
-			fuzzy[i]=r0;
-			i++;
-			fuzzy[i]=r0;
-			i++;
-		}
+		//the main function returns the value of correction
 		double correction(double e,double de)
 		{
+			error=e;
+			d_error=de;
 			define_error_array();
-			assign_fuzzyset();
 			int k=0;
-			double numerator=0.0;
+			double numerator=0.0,sum=0.0;
 			for(int i=0;i<5;i++)
 			{
 				for(int j=0;j<5;j++)
@@ -112,14 +81,13 @@ class Fuzzy
 					numerator+=min_y[i][j]*fuzzy[i+j+k];
 					sum+=min_y[i][j];
 				}
-				k+=5;
+				k+=4;
 			}
 			return numerator/sum;
 		}
+		
 };
-int main()
-{
-	Fuzzy fuz(5,2);
-	cout<<fuz.correction(1,2)<<endl;
-	cout<<fuz.correction(1,2);
-}
+//int main()
+//{
+////	cout<<fuz.correction(-5,8.78908012);
+//}
